@@ -16,6 +16,9 @@ public class Main {
         "jdbc:h2:mem:natter", "natter", "password");
     var database = Database.forDataSource(datasource);
     createTables(database);
+    datasource = JdbcConnectionPool.create(
+        "jdbc:h2:mem:natter", "natter_api_user", "password");
+    database = Database.forDataSource(datasource);
 
     var spaceController = new SpaceController(database);
     post("/spaces",
