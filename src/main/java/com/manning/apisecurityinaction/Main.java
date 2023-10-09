@@ -31,6 +31,9 @@ public class Main {
       response.type("application/json");
     });
 
+    afterAfter((request, response) ->
+          response.header("Server", ""));
+
     internalServerError(new JSONObject()
         .put("error", "internal server error").toString());
     notFound(new JSONObject()
@@ -47,7 +50,7 @@ public class Main {
   private static void badRequest(Exception ex,
       Request request, Response response) {
     response.status(400);
-    response.body("{\"error\": \"" + ex + "\"}");
+    response.body("{\"error\": \"" + ex.getMessage() + "\"}");
   }
 
   private static void createTables(Database database)
