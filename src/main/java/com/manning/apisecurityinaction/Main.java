@@ -7,6 +7,9 @@ import org.json.*;
 
 import java.nio.file.*;
 
+import org.dalesbred.result.EmptyResultException;
+import spark.*;
+
 import static spark.Spark.*;
 
 public class Main {
@@ -32,6 +35,19 @@ public class Main {
         .put("error", "internal server error").toString());
     notFound(new JSONObject()
         .put("error", "not found").toString());
+
+    exception(IllegalArgumentException.class,
+        Main::badRequest);
+    exception(JSONException.class,
+        Main::badRequest);
+    exception(EmptyResultException.class,
+        (e, request, response) -> response.status(404));
+  }
+
+  private static void badRequest(Exception ex,
+      Request request, Response response) {
+    response.status(400);
+    response.body("{\"error\": \"" + ex + "\"}");
   }
 
   private static void createTables(Database database)
