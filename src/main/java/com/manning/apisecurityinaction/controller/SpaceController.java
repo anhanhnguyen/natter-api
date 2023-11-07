@@ -40,12 +40,51 @@ public class SpaceController {
               "VALUES(?, ?, ?);",
           spaceId, spaceName, owner);
 
+      database.updateUnique(
+          "INSERT INTO permissions(space_id, user_id, perms) " +
+              "VALUES(?, ?, ?)",
+          spaceId, owner, "rwd");
+
       response.status(201);
       response.header("Location", "/spaces/" + spaceId);
 
       return new JSONObject()
           .put("name", spaceName)
           .put("uri", "/spaces/" + spaceId);
+    });
+  }
+
+  public JSONObject postMessage(Request request, Response response)
+      throws SQLException {
+    var json = new JSONObject(request.body());
+
+    var author = json.getString("author");
+    if (!author.matches("[a-zA-Z][a-zA-Z0-9]{1,29}")) {
+      throw new IllegalArgumentException("invalid username: " + author);
+    }
+
+    var subject = request.attribute("subject");
+    if (!author.equals(subject)) {
+      throw new IllegalArgumentException(
+          "author must match authenticated user");
+    }
+
+    return database.withTransaction(tx -> {
+      var spaceId = Long.parseLong(request.params(":spaceId"));
+      var msgId = database.findUniqueLong("SELECT NEXT VALUE FOR msg_id_seq;");
+      var message = json.getString("message");
+
+      database.updateUnique(
+          "INSERT INTO messages(space_id, msg_id, msg_time," +
+              "author, msg_text) " +
+              "VALUES(?, ?, current_timestamp, ?, ?)",
+          spaceId, msgId, author, message);
+
+      response.status(201);
+
+      return new JSONObject()
+          .put("message", message)
+          .put("uri", "/spaces/" + spaceId + "/messages/" + msgId);
     });
   }
 }

@@ -66,7 +66,12 @@ public class Main {
     get("/logs", auditController::readAuditLog);
 
     post("/users", userController::registerUser);
+
+    before("/spaces", userController::requireAuthentication);
     post("/spaces", spaceController::createSpace);
+
+    before("/spaces/:spaceId/messages", userController.requirePermission("POST", "w"));
+    post("/spaces/:spaceId/messages", spaceController::postMessage);
 
     internalServerError(new JSONObject()
         .put("error", "internal server error").toString());
