@@ -28,6 +28,9 @@ public class Main {
     post("/spaces",
         spaceController::createSpace);
 
+    var userController = new UserController(database);
+    post("/users", userController::registerUser);
+
     var rateLimiter = RateLimiter.create(2.0d);
 
     before((request, response) -> {
