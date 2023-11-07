@@ -25,6 +25,12 @@ public class SpaceController {
       throw new IllegalArgumentException("invalid username: " + owner);
     }
 
+    var subject = request.attribute("subject");
+    if (!owner.equals(subject)) {
+      throw new IllegalArgumentException(
+          "owner must match authenticated user");
+    }
+
     return database.withTransaction(tx -> {
       var spaceId = database.findUniqueLong(
           "SELECT NEXT VALUE FOR space_id_seq;");

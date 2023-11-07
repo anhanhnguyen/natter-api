@@ -58,6 +58,8 @@ public class Main {
       response.header("Server", "");
     });
 
+    before(userController::authenticate);
+
     internalServerError(new JSONObject()
         .put("error", "internal server error").toString());
     notFound(new JSONObject()
