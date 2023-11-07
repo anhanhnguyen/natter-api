@@ -73,6 +73,9 @@ public class Main {
     before("/spaces/:spaceId/messages", userController.requirePermission("POST", "w"));
     post("/spaces/:spaceId/messages", spaceController::postMessage);
 
+    before("/spaces/:spaceId/members", userController.requirePermission("POST", "r"));
+    post("/spaces/:spaceId/members", spaceController::addMember);
+
     internalServerError(new JSONObject()
         .put("error", "internal server error").toString());
     notFound(new JSONObject()
