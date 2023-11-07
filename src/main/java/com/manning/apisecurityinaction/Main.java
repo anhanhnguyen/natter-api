@@ -76,7 +76,7 @@ public class Main {
     before("/spaces/:spaceId/messages/*", userController.requirePermission("DELETE", "d"));
     delete("/spaces/:spaceId/messages/:msgId", spaceController::deleteMessage);
 
-    before("/spaces/:spaceId/members", userController.requirePermission("POST", "w"));
+    before("/spaces/:spaceId/members", userController.requirePermission("POST", "rwd"));
     post("/spaces/:spaceId/members", spaceController::addMember);
 
     internalServerError(new JSONObject()
