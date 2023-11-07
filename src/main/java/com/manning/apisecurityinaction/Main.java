@@ -27,11 +27,8 @@ public class Main {
     database = Database.forDataSource(datasource);
 
     var spaceController = new SpaceController(database);
-    post("/spaces",
-        spaceController::createSpace);
-
     var userController = new UserController(database);
-    post("/users", userController::registerUser);
+    var auditController = new AuditController(database);
 
     var rateLimiter = RateLimiter.create(2.0d);
 
@@ -62,6 +59,14 @@ public class Main {
     });
 
     before(userController::authenticate);
+
+    before(auditController::auditRequestStart);
+    afterAfter(auditController::auditRequestEnd);
+
+    get("/logs", auditController::readAuditLog);
+
+    post("/users", userController::registerUser);
+    post("/spaces", spaceController::createSpace);
 
     internalServerError(new JSONObject()
         .put("error", "internal server error").toString());
