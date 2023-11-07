@@ -6,6 +6,7 @@ import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.*;
 
 import java.nio.file.*;
+import com.google.common.util.concurrent.*;
 
 import org.dalesbred.result.EmptyResultException;
 import spark.*;
@@ -26,6 +27,14 @@ public class Main {
     var spaceController = new SpaceController(database);
     post("/spaces",
         spaceController::createSpace);
+
+    var rateLimiter = RateLimiter.create(2.0d);
+
+    before((request, response) -> {
+      if (!rateLimiter.tryAcquire()) {
+        halt(429);
+      }
+    });
 
     before(((request, response) -> {
       if (request.requestMethod().equals("POST") &&
