@@ -58,6 +58,7 @@ public class Main {
       response.header("Content-Security-Policy",
           "default-src 'none'; frame-ancestors 'none'; sandbox");
       response.header("Server", "");
+      response.header("Strict-Transport-Security", "max-age=31536000");
     });
 
     before(userController::authenticate);
