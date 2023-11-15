@@ -10,6 +10,8 @@ public interface TokenStore {
 
   Optional<Token> read(Request request, String tokenId);
 
+  void revoke(Request request, String tokenId);
+
   class Token {
     public final Instant expiry;
     public final String username;
