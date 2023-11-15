@@ -1,6 +1,8 @@
 package com.manning.apisecurityinaction;
 
 import com.manning.apisecurityinaction.controller.*;
+import com.manning.apisecurityinaction.token.TokenStore;
+
 import org.dalesbred.Database;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.*;
@@ -59,10 +61,16 @@ public class Main {
       response.header("Strict-Transport-Security", "max-age=31536000");
     });
 
+    TokenStore tokenStore = null;
+    var tokenController = new TokenController(tokenStore);
+
     before(userController::authenticate);
 
     before(auditController::auditRequestStart);
     afterAfter(auditController::auditRequestEnd);
+
+    before("/sessions", userController::requireAuthentication);
+    post("/sessions", tokenController::login);
 
     get("/logs", auditController::readAuditLog);
 
