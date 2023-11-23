@@ -82,6 +82,12 @@ public class Main {
 
     get("/logs", auditController::readAuditLog);
 
+    before("/expired_tokens", userController::requireAuthentication);
+    delete("/expired_tokens", (request, response) -> {
+      databaseTokenStore.deleteExpiredTokens();
+      return new JSONObject();
+    });
+
     post("/users", userController::registerUser);
 
     before("/spaces", userController::requireAuthentication);
