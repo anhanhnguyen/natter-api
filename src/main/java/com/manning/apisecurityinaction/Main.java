@@ -3,13 +3,17 @@ package com.manning.apisecurityinaction;
 import com.manning.apisecurityinaction.controller.*;
 import com.manning.apisecurityinaction.token.CookieTokenStore;
 import com.manning.apisecurityinaction.token.DatabaseTokenStore;
+import com.manning.apisecurityinaction.token.HmacTokenStore;
 import com.manning.apisecurityinaction.token.TokenStore;
 
 import org.dalesbred.Database;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.*;
 
+import java.io.FileInputStream;
 import java.nio.file.*;
+import java.security.KeyStore;
+
 import com.google.common.util.concurrent.*;
 
 import org.dalesbred.result.EmptyResultException;
@@ -66,8 +70,14 @@ public class Main {
       response.header("Strict-Transport-Security", "max-age=31536000");
     });
 
+    var keyPassword = System.getProperty("keystore.password", "changeit").toCharArray();
+    var keyStore = KeyStore.getInstance("PKCS12");
+    keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
+
+    var macKey = keyStore.getKey("hmac-key", keyPassword);
+
     var databaseTokenStore = new DatabaseTokenStore(database);
-    TokenStore tokenStore = databaseTokenStore;
+    var tokenStore = new HmacTokenStore(databaseTokenStore, macKey);
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);
