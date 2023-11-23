@@ -15,6 +15,7 @@ import org.dalesbred.result.EmptyResultException;
 import spark.*;
 
 import static spark.Spark.*;
+import java.util.Set;
 
 public class Main {
 
@@ -42,6 +43,7 @@ public class Main {
         halt(429);
       }
     });
+    before(new CorsFilter(Set.of("https://localhost:9999")));
 
     before(((request, response) -> {
       if (request.requestMethod().equals("POST") &&
