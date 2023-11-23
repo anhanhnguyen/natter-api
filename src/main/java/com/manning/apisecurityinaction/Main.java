@@ -2,6 +2,7 @@ package com.manning.apisecurityinaction;
 
 import com.manning.apisecurityinaction.controller.*;
 import com.manning.apisecurityinaction.token.CookieTokenStore;
+import com.manning.apisecurityinaction.token.DatabaseTokenStore;
 import com.manning.apisecurityinaction.token.TokenStore;
 
 import org.dalesbred.Database;
@@ -65,7 +66,8 @@ public class Main {
       response.header("Strict-Transport-Security", "max-age=31536000");
     });
 
-    TokenStore tokenStore = new CookieTokenStore();
+    var databaseTokenStore = new DatabaseTokenStore(database);
+    TokenStore tokenStore = databaseTokenStore;
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);
