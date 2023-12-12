@@ -3,6 +3,7 @@ package com.manning.apisecurityinaction;
 import com.manning.apisecurityinaction.controller.*;
 import com.manning.apisecurityinaction.token.CookieTokenStore;
 import com.manning.apisecurityinaction.token.DatabaseTokenStore;
+import com.manning.apisecurityinaction.token.EncryptedTokenStore;
 import com.manning.apisecurityinaction.token.HmacTokenStore;
 import com.manning.apisecurityinaction.token.JsonTokenStore;
 import com.manning.apisecurityinaction.token.SignedJwtTokenStore;
@@ -10,6 +11,8 @@ import com.manning.apisecurityinaction.token.TokenStore;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
+
+import software.pando.crypto.nacl.SecretBox;
 
 import org.dalesbred.Database;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -82,11 +85,10 @@ public class Main {
     keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
 
     var macKey = keyStore.getKey("hmac-key", keyPassword);
+    var encKey = keyStore.getKey("aes-key", keyPassword);
 
-    var algorithm = JWSAlgorithm.HS256;
-    var signer = new MACSigner((SecretKey) macKey);
-    var verifier = new MACVerifier((SecretKey) macKey);
-    TokenStore tokenStore = new SignedJwtTokenStore(signer, verifier, algorithm, "https://localhost:4567");
+    var naclKey = SecretBox.key(encKey.getEncoded());
+    var tokenStore = new EncryptedTokenStore(new JsonTokenStore(), naclKey);
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);

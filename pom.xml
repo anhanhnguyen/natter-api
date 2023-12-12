@@ -15,6 +15,11 @@
   </properties>
   <dependencies>
     <dependency>
+      <groupId>software.pando.crypto</groupId>
+      <artifactId>salty-coffee</artifactId>
+      <version>1.0.2</version>
+    </dependency>
+    <dependency>
       <groupId>com.nimbusds</groupId>
       <artifactId>nimbus-jose-jwt</artifactId>
       <version>8.19</version>
