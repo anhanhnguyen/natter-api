@@ -3,6 +3,8 @@ package com.manning.apisecurityinaction.controller;
 import java.time.temporal.ChronoUnit;
 
 import org.json.JSONObject;
+
+import com.manning.apisecurityinaction.token.SecureTokenStore;
 import com.manning.apisecurityinaction.token.TokenStore;
 import spark.*;
 import static spark.Spark.*;
@@ -14,7 +16,7 @@ public class TokenController {
 
   private final TokenStore tokenStore;
 
-  public TokenController(TokenStore tokenStore) {
+  public TokenController(SecureTokenStore tokenStore) {
     this.tokenStore = tokenStore;
   }
 

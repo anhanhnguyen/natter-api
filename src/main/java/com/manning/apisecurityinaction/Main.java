@@ -7,6 +7,7 @@ import com.manning.apisecurityinaction.token.EncryptedJwtTokenStore;
 import com.manning.apisecurityinaction.token.EncryptedTokenStore;
 import com.manning.apisecurityinaction.token.HmacTokenStore;
 import com.manning.apisecurityinaction.token.JsonTokenStore;
+import com.manning.apisecurityinaction.token.SecureTokenStore;
 import com.manning.apisecurityinaction.token.SignedJwtTokenStore;
 import com.manning.apisecurityinaction.token.TokenStore;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -88,7 +89,7 @@ public class Main {
     var macKey = keyStore.getKey("hmac-key", keyPassword);
     var encKey = keyStore.getKey("aes-key", keyPassword);
 
-    TokenStore tokenStore = new EncryptedJwtTokenStore((SecretKey) encKey);
+    SecureTokenStore tokenStore = new EncryptedJwtTokenStore((SecretKey) encKey);
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);
