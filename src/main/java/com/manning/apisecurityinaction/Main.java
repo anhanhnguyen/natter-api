@@ -5,7 +5,11 @@ import com.manning.apisecurityinaction.token.CookieTokenStore;
 import com.manning.apisecurityinaction.token.DatabaseTokenStore;
 import com.manning.apisecurityinaction.token.HmacTokenStore;
 import com.manning.apisecurityinaction.token.JsonTokenStore;
+import com.manning.apisecurityinaction.token.SignedJwtTokenStore;
 import com.manning.apisecurityinaction.token.TokenStore;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.MACVerifier;
 
 import org.dalesbred.Database;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -22,6 +26,8 @@ import spark.*;
 
 import static spark.Spark.*;
 import java.util.Set;
+
+import javax.crypto.SecretKey;
 
 public class Main {
 
@@ -77,8 +83,10 @@ public class Main {
 
     var macKey = keyStore.getKey("hmac-key", keyPassword);
 
-    TokenStore tokenStore = new JsonTokenStore();
-    tokenStore = new HmacTokenStore(tokenStore, macKey);
+    var algorithm = JWSAlgorithm.HS256;
+    var signer = new MACSigner((SecretKey) macKey);
+    var verifier = new MACVerifier((SecretKey) macKey);
+    TokenStore tokenStore = new SignedJwtTokenStore(signer, verifier, algorithm, "https://localhost:4567");
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);
@@ -95,8 +103,8 @@ public class Main {
 
     before("/expired_tokens", userController::requireAuthentication);
     // delete("/expired_tokens", (request, response) -> {
-      // databaseTokenStore.deleteExpiredTokens();
-      // return new JSONObject();
+    // databaseTokenStore.deleteExpiredTokens();
+    // return new JSONObject();
     // });
 
     post("/users", userController::registerUser);
