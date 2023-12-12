@@ -4,6 +4,7 @@ import com.manning.apisecurityinaction.controller.*;
 import com.manning.apisecurityinaction.token.CookieTokenStore;
 import com.manning.apisecurityinaction.token.DatabaseTokenStore;
 import com.manning.apisecurityinaction.token.HmacTokenStore;
+import com.manning.apisecurityinaction.token.JsonTokenStore;
 import com.manning.apisecurityinaction.token.TokenStore;
 
 import org.dalesbred.Database;
@@ -76,8 +77,8 @@ public class Main {
 
     var macKey = keyStore.getKey("hmac-key", keyPassword);
 
-    var databaseTokenStore = new DatabaseTokenStore(database);
-    var tokenStore = new HmacTokenStore(databaseTokenStore, macKey);
+    TokenStore tokenStore = new JsonTokenStore();
+    tokenStore = new HmacTokenStore(tokenStore, macKey);
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);
@@ -93,10 +94,10 @@ public class Main {
     get("/logs", auditController::readAuditLog);
 
     before("/expired_tokens", userController::requireAuthentication);
-    delete("/expired_tokens", (request, response) -> {
-      databaseTokenStore.deleteExpiredTokens();
-      return new JSONObject();
-    });
+    // delete("/expired_tokens", (request, response) -> {
+      // databaseTokenStore.deleteExpiredTokens();
+      // return new JSONObject();
+    // });
 
     post("/users", userController::registerUser);
 
