@@ -2,6 +2,7 @@ package com.manning.apisecurityinaction.controller;
 
 import java.time.temporal.ChronoUnit;
 
+import java.util.*;
 import org.json.JSONObject;
 
 import com.manning.apisecurityinaction.token.SecureTokenStore;
@@ -16,15 +17,20 @@ public class TokenController {
 
   private final TokenStore tokenStore;
 
+  private static final String DEFAULT_SCOPES = "create_space post_message read_message list_messages "
+      + "delete_message add_member";
+
   public TokenController(SecureTokenStore tokenStore) {
     this.tokenStore = tokenStore;
   }
 
   public JSONObject login(Request request, Response response) {
     String subject = request.attribute("subject");
-    var expiry = now().plus(10, ChronoUnit.MINUTES);
+    var expiry = Instant.now().plus(10, ChronoUnit.MINUTES);
 
     var token = new TokenStore.Token(expiry, subject);
+    var scope = request.queryParamOrDefault("scope", DEFAULT_SCOPES);
+    token.attributes.put("scope", scope);
     var tokenId = tokenStore.create(request, token);
 
     response.status(201);
@@ -63,5 +69,22 @@ public class TokenController {
 
     response.status(200);
     return new JSONObject();
+  }
+
+  public Filter requireScope(String method, String requiredScope) {
+    return (request, response) -> {
+      if (!method.equalsIgnoreCase(request.requestMethod()))
+        return;
+      var tokenScope = request.<String>attribute("scope");
+      if (tokenScope == null)
+        return;
+      if (!Set.of(tokenScope.split(" "))
+          .contains(requiredScope)) {
+        response.header("WWW-Authenticate",
+            "Bearer error=\"insufficient_scope\"," +
+                "scope=\"" + requiredScope + "\"");
+        halt(403);
+      }
+    };
   }
 }

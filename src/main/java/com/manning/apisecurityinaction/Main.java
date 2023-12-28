@@ -99,11 +99,12 @@ public class Main {
     before(auditController::auditRequestStart);
     afterAfter(auditController::auditRequestEnd);
 
+    get("/logs", auditController::readAuditLog);
+
     before("/sessions", userController::requireAuthentication);
+    before("/sessions", tokenController.requireScope("POST", "full_access"));
     post("/sessions", tokenController::login);
     delete("/sessions", tokenController::logout);
-
-    get("/logs", auditController::readAuditLog);
 
     before("/expired_tokens", userController::requireAuthentication);
     // delete("/expired_tokens", (request, response) -> {
@@ -114,16 +115,25 @@ public class Main {
     post("/users", userController::registerUser);
 
     before("/spaces", userController::requireAuthentication);
+    before("/spaces", tokenController.requireScope("POST", "create_space"));
     post("/spaces", spaceController::createSpace);
 
+    before("/spaces/*/messages", tokenController.requireScope("POST", "post_message"));
     before("/spaces/:spaceId/messages", userController.requirePermission("POST", "w"));
     post("/spaces/:spaceId/messages", spaceController::postMessage);
 
-    before("/spaces/:spaceId/messages/*", userController.requirePermission("DELETE", "d"));
-    delete("/spaces/:spaceId/messages/:msgId", spaceController::deleteMessage);
+    before("/spaces/*/messages/*", tokenController.requireScope("GET", "read_message"));
+    before("/spaces/:spaceId/messages/*", userController.requirePermission("GET", "r"));
 
+    before("/spaces/*/messages", tokenController.requireScope("GET", "list_messages"));
+    before("/spaces/:spaceId/messages", userController.requirePermission("GET", "r"));
+
+    before("/spaces/*/members", tokenController.requireScope("POST", "add_member"));
     before("/spaces/:spaceId/members", userController.requirePermission("POST", "rwd"));
     post("/spaces/:spaceId/members", spaceController::addMember);
+
+    before("/spaces/*/messages/*", tokenController.requireScope("DELETE", "delete_message"));
+    before("/spaces/:spaceId/messages/*", userController.requirePermission("DELETE", "d"));
 
     internalServerError(new JSONObject()
         .put("error", "internal server error").toString());
