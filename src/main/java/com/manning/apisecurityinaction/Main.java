@@ -7,6 +7,7 @@ import com.manning.apisecurityinaction.token.EncryptedJwtTokenStore;
 import com.manning.apisecurityinaction.token.EncryptedTokenStore;
 import com.manning.apisecurityinaction.token.HmacTokenStore;
 import com.manning.apisecurityinaction.token.JsonTokenStore;
+import com.manning.apisecurityinaction.token.OAuth2TokenStore;
 import com.manning.apisecurityinaction.token.SecureTokenStore;
 import com.manning.apisecurityinaction.token.SignedJwtTokenStore;
 import com.manning.apisecurityinaction.token.TokenStore;
@@ -21,6 +22,7 @@ import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.*;
 
 import java.io.FileInputStream;
+import java.net.URI;
 import java.nio.file.*;
 import java.security.KeyStore;
 
@@ -89,8 +91,10 @@ public class Main {
     var macKey = keyStore.getKey("hmac-key", keyPassword);
     var encKey = keyStore.getKey("aes-key", keyPassword);
 
-    var tokenWhitelist = new DatabaseTokenStore(database);
-    SecureTokenStore tokenStore = new EncryptedJwtTokenStore((SecretKey) encKey, tokenWhitelist);
+    var clientId = "test";
+    var clientSecret = "password";
+    var introspectionEndpoint = URI.create("http://as.example.com:8080/oauth2/introspect");
+    SecureTokenStore tokenStore = new OAuth2TokenStore(introspectionEndpoint, clientId, clientSecret);
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);
