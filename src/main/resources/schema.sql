@@ -3,6 +3,11 @@ CREATE TABLE users(
     pw_hash VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE group_members(
+    group_id VARCHAR(30) NOT NULL,
+    user_id VARCHAR(30) NOT NULL REFERENCES users(user_id));
+CREATE INDEX group_member_user_idx ON group_members(user_id);
+
 CREATE TABLE spaces(
     space_id INT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -32,10 +37,8 @@ CREATE SEQUENCE audit_id_seq;
 
 CREATE TABLE permissions(
     space_id INT NOT NULL REFERENCES spaces(space_id),
-    user_id VARCHAR(30) NOT NULL REFERENCES users(user_id),
-    perms VARCHAR(3) NOT NULL,
-    PRIMARY KEY (space_id, user_id)
-);
+    user_or_group_id VARCHAR(30) NOT NULL,
+    perms VARCHAR(3) NOT NULL);
 
 CREATE TABLE tokens(
     token_id VARCHAR(100) PRIMARY KEY,
