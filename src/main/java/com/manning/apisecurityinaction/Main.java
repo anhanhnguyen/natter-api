@@ -53,7 +53,8 @@ public class Main {
         "jdbc:h2:mem:natter", "natter_api_user", "password");
     database = Database.forDataSource(datasource);
 
-    var spaceController = new SpaceController(database);
+    var capController = new CapabilityController(new DatabaseTokenStore(database));
+    var spaceController = new SpaceController(database, capController);
     var userController = new UserController(database);
     var auditController = new AuditController(database);
 
@@ -105,8 +106,8 @@ public class Main {
     before(auditController::auditRequestStart);
     afterAfter(auditController::auditRequestEnd);
 
-    var droolsController = new DroolsAccessController();
-    before("/*", droolsController::enforcePolicy);
+    // var droolsController = new DroolsAccessController();
+    // before("/*", droolsController::enforcePolicy);
 
     get("/logs", auditController::readAuditLog);
 
@@ -127,9 +128,9 @@ public class Main {
     before("/spaces", tokenController.requireScope("POST", "create_space"));
     post("/spaces", spaceController::createSpace);
 
-    before("/spaces/:spaceId/messages", userController::lookupPermissions);
-    before("/spaces/:spaceId/messages/*", userController::lookupPermissions);
-    before("/spaces/:spaceId/members", userController::lookupPermissions);
+    before("/spaces/:spaceId/messages", capController::lookupPermissions);
+    before("/spaces/:spaceId/messages/*", capController::lookupPermissions);
+    before("/spaces/:spaceId/members", capController::lookupPermissions);
 
     before("/spaces/*/messages", tokenController.requireScope("POST", "post_message"));
     before("/spaces/:spaceId/messages", userController.requirePermission("POST", "w"));

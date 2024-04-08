@@ -1,19 +1,24 @@
 package com.manning.apisecurityinaction.controller;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.util.Set;
 
 import org.dalesbred.Database;
-import org.json.*;
-import spark.*;
-import java.util.Set;
+import org.json.JSONObject;
+
+import spark.Request;
+import spark.Response;
 
 public class SpaceController {
   private final Database database;
+  private final CapabilityController capabilityController;
 
   private static final Set<String> DEFINED_ROLES = Set.of("owner", "moderator", "member", "observer");
 
-  public SpaceController(Database database) {
+  public SpaceController(Database database, CapabilityController capabilityController){
     this.database = database;
+    this.capabilityController = capabilityController;
   }
 
   public JSONObject createSpace(Request request, Response response)
@@ -43,17 +48,15 @@ public class SpaceController {
               "VALUES(?, ?, ?);",
           spaceId, spaceName, owner);
 
-      database.updateUnique(
-          "INSERT INTO user_roles(space_id, user_id, role_id) " +
-              "VALUES(?, ?, ?)",
-          spaceId, owner, "owner");
+      var expiry = Duration.ofDays(100000);
+      var uri = capabilityController.createUri(request, "/spaces/" + spaceId, "rwd", expiry);
 
       response.status(201);
-      response.header("Location", "/spaces/" + spaceId);
+      response.header("Location", uri.toASCIIString());
 
       return new JSONObject()
           .put("name", spaceName)
-          .put("uri", "/spaces/" + spaceId);
+          .put("uri", uri);
     });
   }
 

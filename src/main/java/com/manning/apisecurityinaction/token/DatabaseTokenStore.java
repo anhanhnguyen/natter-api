@@ -2,15 +2,20 @@ package com.manning.apisecurityinaction.token;
 
 import org.dalesbred.Database;
 import org.json.JSONObject;
+import org.slf4j.*;
 import spark.Request;
 
 import java.security.SecureRandom;
 import java.sql.*;
-import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
+import java.util.concurrent.*;
 
-public class DatabaseTokenStore implements ConfidentialTokenStore {
+import static com.manning.apisecurityinaction.token.CookieTokenStore.sha256;
+
+public class DatabaseTokenStore implements SecureTokenStore {
+    private static final Logger logger =
+            LoggerFactory.getLogger(DatabaseTokenStore.class);
+
     private final Database database;
     private final SecureRandom secureRandom;
 
@@ -19,7 +24,8 @@ public class DatabaseTokenStore implements ConfidentialTokenStore {
         this.secureRandom = new SecureRandom();
 
         Executors.newSingleThreadScheduledExecutor()
-                .scheduleAtFixedRate(this::deleteExpiredTokens, 10, 10, TimeUnit.MINUTES);
+                .scheduleAtFixedRate(this::deleteExpiredTokens,
+                        10, 10, TimeUnit.MINUTES);
     }
 
     private String randomId() {
@@ -34,8 +40,8 @@ public class DatabaseTokenStore implements ConfidentialTokenStore {
         var attrs = new JSONObject(token.attributes).toString();
 
         database.updateUnique("INSERT INTO " +
-                "tokens(token_id, user_id, expiry, attributes) " +
-                "VALUES(?, ?, ?, ?)", hash(tokenId), token.username,
+            "tokens(token_id, user_id, expiry, attributes) " +
+            "VALUES(?, ?, ?, ?)", hash(tokenId), token.username,
                 token.expiry, attrs);
 
         return tokenId;
@@ -45,8 +51,18 @@ public class DatabaseTokenStore implements ConfidentialTokenStore {
     public Optional<Token> read(Request request, String tokenId) {
         return database.findOptional(this::readToken,
                 "SELECT user_id, expiry, attributes " +
-                        "FROM tokens WHERE token_id = ?",
+                "FROM tokens WHERE token_id = ?", hash(tokenId));
+    }
+
+    @Override
+    public void revoke(Request request, String tokenId) {
+        database.update("DELETE FROM tokens WHERE token_id = ?",
                 hash(tokenId));
+    }
+
+    private String hash(String tokenId) {
+        var hash = sha256(tokenId);
+        return Base64url.encode(hash);
     }
 
     private Token readToken(ResultSet resultSet)
@@ -62,18 +78,9 @@ public class DatabaseTokenStore implements ConfidentialTokenStore {
         return token;
     }
 
-    @Override
-    public void revoke(Request request, String tokenId) {
-        database.update("DELETE FROM tokens WHERE token_id = ?",
-                hash(tokenId));
-    }
-
     public void deleteExpiredTokens() {
-        database.update("DELETE FROM tokens WHERE expiry < current_timestamp");
-    }
-
-    private String hash(String tokenId) {
-        var hash = CookieTokenStore.sha256(tokenId);
-        return Base64url.encode(hash);
+        var deleted = database.update(
+            "DELETE FROM tokens WHERE expiry < current_timestamp");
+        logger.info("Deleted {} expired tokens", deleted);
     }
 }

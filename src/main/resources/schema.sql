@@ -59,7 +59,7 @@ CREATE TABLE permissions(
 
 CREATE TABLE tokens(
     token_id VARCHAR(100) PRIMARY KEY,
-    user_id VARCHAR(30) NOT NULL,
+    user_id VARCHAR(30) REFERENCES users(user_id),
     expiry TIMESTAMP NOT NULL,
     attributes VARCHAR(4096) NOT NULL
 );
@@ -75,3 +75,4 @@ GRANT SELECT, INSERT ON permissions TO natter_api_user;
 GRANT SELECT, INSERT, DELETE ON tokens TO natter_api_user; 
 GRANT SELECT ON role_permissions TO natter_api_user;
 GRANT SELECT, INSERT, DELETE ON user_roles TO natter_api_user;
+GRANT SELECT, INSERT, DELETE ON group_members TO natter_api_user;
