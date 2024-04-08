@@ -39,5 +39,17 @@ public abstract class ABACAccessController {
             Map<String, Object> env);
 
     public static class Decision {
+        private boolean permit = true;
+
+        public void deny() {
+            permit = false;
+        }
+
+        public void permit() {
+        }
+
+        boolean isPermitted() {
+            return permit;
+        }
     }
 }
