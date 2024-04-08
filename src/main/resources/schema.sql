@@ -45,6 +45,13 @@ INSERT INTO role_permissions(role_id, perms)
            ('member', 'rw'),
            ('observer', 'r');
 
+CREATE TABLE user_roles(
+    space_id INT NOT NULL REFERENCES spaces(space_id),
+    user_id VARCHAR(30) NOT NULL REFERENCES users(user_id),
+    role_id VARCHAR(30) NOT NULL REFERENCES role_permissions(role_id),
+    PRIMARY KEY (space_id, user_id)
+);
+
 CREATE TABLE permissions(
     space_id INT NOT NULL REFERENCES spaces(space_id),
     user_or_group_id VARCHAR(30) NOT NULL,
@@ -67,3 +74,4 @@ GRANT SELECT, INSERT ON audit_log TO natter_api_user;
 GRANT SELECT, INSERT ON permissions TO natter_api_user;
 GRANT SELECT, INSERT, DELETE ON tokens TO natter_api_user; 
 GRANT SELECT ON role_permissions TO natter_api_user;
+GRANT SELECT, INSERT, DELETE ON user_roles TO natter_api_user;

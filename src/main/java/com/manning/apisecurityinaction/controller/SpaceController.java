@@ -5,9 +5,12 @@ import java.sql.SQLException;
 import org.dalesbred.Database;
 import org.json.*;
 import spark.*;
+import java.util.Set;
 
 public class SpaceController {
   private final Database database;
+
+  private static final Set<String> DEFINED_ROLES = Set.of("owner", "moderator", "member", "observer");
 
   public SpaceController(Database database) {
     this.database = database;
@@ -41,9 +44,9 @@ public class SpaceController {
           spaceId, spaceName, owner);
 
       database.updateUnique(
-          "INSERT INTO permissions(space_id, user_id, perms) " +
+          "INSERT INTO user_roles(space_id, user_id, role_id) " +
               "VALUES(?, ?, ?)",
-          spaceId, owner, "rwd");
+          spaceId, owner, "owner");
 
       response.status(201);
       response.header("Location", "/spaces/" + spaceId);
@@ -92,21 +95,21 @@ public class SpaceController {
     var json = new JSONObject(request.body());
     var spaceId = Long.parseLong(request.params(":spaceId"));
     var userToAdd = json.getString("username");
-    var perms = json.getString("permissions");
+    var role = json.optString("role", "member");
 
-    if (!perms.matches("r?w?d?")) {
-      throw new IllegalArgumentException("invalid permissions");
+    if (!DEFINED_ROLES.contains(role)) {
+      throw new IllegalArgumentException("invalid role");
     }
 
     database.updateUnique(
-        "INSERT INTO permissions(space_id, user_id, perms) " +
-            "VALUES(?, ?, ?);",
-        spaceId, userToAdd, perms);
+        "INSERT INTO user_roles(space_id, user_id, role_id)" +
+            " VALUES(?, ?, ?)",
+        spaceId, userToAdd, role);
 
     response.status(200);
     return new JSONObject()
         .put("username", userToAdd)
-        .put("permissions", perms);
+        .put("role", role);
   }
 
   public JSONObject deleteMessage(Request request, Response response) {
