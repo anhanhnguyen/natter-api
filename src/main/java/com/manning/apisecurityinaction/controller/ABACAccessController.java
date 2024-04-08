@@ -21,18 +21,17 @@ public abstract class ABACAccessController {
         actionAttrs.put("method", request.requestMethod());
 
         var envAttrs = new HashMap<String, Object>();
-        envAttrs.put("timeOfDay", LocalTime.now());
+        envAttrs.put("timeOfDay", LocalTime.now().withHour(23));
         envAttrs.put("ip", request.ip());
 
-        var decision = checkPermitted(subjectAttrs, resourceAttrs,
-                actionAttrs, envAttrs);
+        var permitted = checkPermitted(subjectAttrs, resourceAttrs, actionAttrs, envAttrs);
 
-        if (!decision.isPermitted()) {
+        if (!permitted) {
             halt(403);
         }
     }
 
-    abstract Decision checkPermitted(
+    abstract boolean checkPermitted(
             Map<String, Object> subject,
             Map<String, Object> resource,
             Map<String, Object> action,

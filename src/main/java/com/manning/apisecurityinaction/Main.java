@@ -1,6 +1,7 @@
 package com.manning.apisecurityinaction;
 
 import com.manning.apisecurityinaction.controller.*;
+import com.manning.apisecurityinaction.controller.ABACAccessController.Decision;
 import com.manning.apisecurityinaction.token.CookieTokenStore;
 import com.manning.apisecurityinaction.token.DatabaseTokenStore;
 import com.manning.apisecurityinaction.token.EncryptedJwtTokenStore;
@@ -20,6 +21,7 @@ import software.pando.crypto.nacl.SecretBox;
 import org.dalesbred.Database;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.*;
+import org.kie.api.runtime.KieSession;
 
 import java.io.FileInputStream;
 import java.net.URI;
@@ -102,6 +104,9 @@ public class Main {
 
     before(auditController::auditRequestStart);
     afterAfter(auditController::auditRequestEnd);
+
+    var droolsController = new DroolsAccessController();
+    before("/*", droolsController::enforcePolicy);
 
     get("/logs", auditController::readAuditLog);
 
