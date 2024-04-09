@@ -8,6 +8,7 @@ import com.manning.apisecurityinaction.token.EncryptedJwtTokenStore;
 import com.manning.apisecurityinaction.token.EncryptedTokenStore;
 import com.manning.apisecurityinaction.token.HmacTokenStore;
 import com.manning.apisecurityinaction.token.JsonTokenStore;
+import com.manning.apisecurityinaction.token.MacaroonTokenStore;
 import com.manning.apisecurityinaction.token.OAuth2TokenStore;
 import com.manning.apisecurityinaction.token.SecureTokenStore;
 import com.manning.apisecurityinaction.token.SignedJwtTokenStore;
@@ -53,7 +54,13 @@ public class Main {
         "jdbc:h2:mem:natter", "natter_api_user", "password");
     database = Database.forDataSource(datasource);
 
-    var capController = new CapabilityController(new DatabaseTokenStore(database));
+    var keyPassword = System.getProperty("keystore.password", "changeit").toCharArray();
+    var keyStore = KeyStore.getInstance("PKCS12");
+    keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
+    var macKey = keyStore.getKey("hmac-key", keyPassword);
+    var encKey = keyStore.getKey("aes-key", keyPassword);
+
+    var capController = new CapabilityController(MacaroonTokenStore.wrap(new DatabaseTokenStore(database), macKey));
     var spaceController = new SpaceController(database, capController);
     var userController = new UserController(database);
     var auditController = new AuditController(database);
