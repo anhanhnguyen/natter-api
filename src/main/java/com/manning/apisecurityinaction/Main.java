@@ -87,17 +87,7 @@ public class Main {
       response.header("Strict-Transport-Security", "max-age=31536000");
     });
 
-    var keyPassword = System.getProperty("keystore.password", "changeit").toCharArray();
-    var keyStore = KeyStore.getInstance("PKCS12");
-    keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
-
-    var macKey = keyStore.getKey("hmac-key", keyPassword);
-    var encKey = keyStore.getKey("aes-key", keyPassword);
-
-    var clientId = "test";
-    var clientSecret = "password";
-    var introspectionEndpoint = URI.create("http://as.example.com:8080/oauth2/introspect");
-    SecureTokenStore tokenStore = new OAuth2TokenStore(introspectionEndpoint, clientId, clientSecret);
+    SecureTokenStore tokenStore = new CookieTokenStore();
     var tokenController = new TokenController(tokenStore);
 
     before(userController::authenticate);
