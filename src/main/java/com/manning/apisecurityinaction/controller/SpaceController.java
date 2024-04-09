@@ -16,7 +16,7 @@ public class SpaceController {
 
   private static final Set<String> DEFINED_ROLES = Set.of("owner", "moderator", "member", "observer");
 
-  public SpaceController(Database database, CapabilityController capabilityController){
+  public SpaceController(Database database, CapabilityController capabilityController) {
     this.database = database;
     this.capabilityController = capabilityController;
   }
@@ -50,13 +50,19 @@ public class SpaceController {
 
       var expiry = Duration.ofDays(100000);
       var uri = capabilityController.createUri(request, "/spaces/" + spaceId, "rwd", expiry);
+      var messagesUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "rwd", expiry);
+      var messagesReadWriteUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "rw", expiry);
+      var messagesReadOnlyUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "r", expiry);
 
       response.status(201);
       response.header("Location", uri.toASCIIString());
 
       return new JSONObject()
           .put("name", spaceName)
-          .put("uri", uri);
+          .put("uri", uri)
+          .put("messages-rwd", messagesUri)
+          .put("messages-rw", messagesReadWriteUri)
+          .put("messages-r", messagesReadOnlyUri);
     });
   }
 
