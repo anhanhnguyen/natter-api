@@ -40,6 +40,9 @@ public class MacaroonTokenStore implements SecureTokenStore {
     public Optional<Token> read(Request request, String tokenId) {
         var macaroon = MacaroonsBuilder.deserialize(tokenId);
         var verifier = new MacaroonsVerifier(macaroon);
+        verifier.satisfyGeneral(new TimestampCaveatVerifier());
+        verifier.satisfyExact("method = " + request.requestMethod());
+        verifier.satisfyGeneral(new SinceVerifier(request));
         if (verifier.isValid(macKey.getEncoded())) {
             return delegate.read(request, macaroon.identifier);
         }
@@ -50,6 +53,29 @@ public class MacaroonTokenStore implements SecureTokenStore {
     public void revoke(Request request, String tokenId) {
         var macaroon = MacaroonsBuilder.deserialize(tokenId);
         delegate.revoke(request, macaroon.identifier);
+    }
+
+    private static class SinceVerifier implements GeneralCaveatVerifier {
+        private final Request request;
+
+        private SinceVerifier(Request request) {
+            this.request = request;
+        }
+
+        @Override
+        public boolean verifyCaveat(String caveat) {
+            if (caveat.startsWith("since > ")) {
+                var minSince = Instant.parse(caveat.substring(8));
+
+                var reqSince = Instant.now().minus(1, ChronoUnit.DAYS);
+                if (request.queryParams("since") != null) {
+                    reqSince = Instant.parse(request.queryParams("since"));
+                }
+                return reqSince.isAfter(minSince);
+            }
+
+            return false;
+        }
     }
 
 }

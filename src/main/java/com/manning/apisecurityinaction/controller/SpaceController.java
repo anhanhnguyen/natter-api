@@ -2,9 +2,13 @@ package com.manning.apisecurityinaction.controller;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.dalesbred.Database;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import spark.Request;
@@ -51,8 +55,10 @@ public class SpaceController {
       var expiry = Duration.ofDays(100000);
       var uri = capabilityController.createUri(request, "/spaces/" + spaceId, "rwd", expiry);
       var messagesUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "rwd", expiry);
-      var messagesReadWriteUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "rw", expiry);
-      var messagesReadOnlyUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "r", expiry);
+      var messagesReadWriteUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "rw",
+          expiry);
+      var messagesReadOnlyUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages", "r",
+          expiry);
 
       response.status(201);
       response.header("Location", uri.toASCIIString());
@@ -98,6 +104,27 @@ public class SpaceController {
           .put("message", message)
           .put("uri", "/spaces/" + spaceId + "/messages/" + msgId);
     });
+  }
+
+  public JSONArray findMessages(Request request, Response response) {
+    var since = Instant.now().minus(1, ChronoUnit.DAYS);
+    if (request.queryParams("since") != null) {
+      since = Instant.parse(request.queryParams("since"));
+    }
+    var spaceId = Long.parseLong(request.params(":spaceId"));
+
+    var messages = database.findAll(Long.class,
+        "SELECT msg_id FROM messages " +
+            "WHERE space_id = ? AND msg_time >= ?;",
+        spaceId, since);
+
+    var perms = request.<String>attribute("perms")
+        .replace("w", "");
+    response.status(200);
+    return new JSONArray(messages.stream()
+        .map(msgId -> "/spaces/" + spaceId + "/messages/" + msgId)
+        .map(path -> capabilityController.createUri(request, path, perms, Duration.ofMinutes(10)))
+        .collect(Collectors.toList()));
   }
 
   public JSONObject addMember(Request request, Response response) {

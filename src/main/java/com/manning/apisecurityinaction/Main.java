@@ -140,6 +140,7 @@ public class Main {
 
     before("/spaces/*/messages", tokenController.requireScope("GET", "list_messages"));
     before("/spaces/:spaceId/messages", userController.requirePermission("GET", "r"));
+    get("/spaces/:spaceId/messages", spaceController::findMessages);
 
     before("/spaces/*/members", tokenController.requireScope("POST", "add_member"));
     before("/spaces/:spaceId/members", userController.requirePermission("POST", "rwd"));
