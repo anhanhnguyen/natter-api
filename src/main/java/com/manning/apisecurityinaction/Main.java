@@ -101,6 +101,8 @@ public class Main {
 
     get("/logs", auditController::readAuditLog);
 
+    post("/capabilities", capController::share);
+
     before("/sessions", userController::requireAuthentication);
     before("/sessions", tokenController.requireScope("POST", "full_access"));
     post("/sessions", tokenController::login);
