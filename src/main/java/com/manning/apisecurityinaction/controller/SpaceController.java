@@ -14,6 +14,13 @@ import org.json.JSONObject;
 import spark.Request;
 import spark.Response;
 
+import java.net.*;
+import java.net.http.*;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.regex.Pattern;
+
 public class SpaceController {
   private final Database database;
   private final CapabilityController capabilityController;
@@ -100,9 +107,15 @@ public class SpaceController {
 
       response.status(201);
 
+      var uri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages/" + msgId, "rd",
+          Duration.ofMinutes(5));
+      var readOnlyUri = capabilityController.createUri(request, "/spaces/" + spaceId + "/messages/" + msgId, "r",
+          Duration.ofDays(365));
+
       return new JSONObject()
           .put("message", message)
-          .put("uri", "/spaces/" + spaceId + "/messages/" + msgId);
+          .put("uri", uri)
+          .put("read-only", readOnlyUri);
     });
   }
 
@@ -155,5 +168,77 @@ public class SpaceController {
     database.updateUnique("DELETE FROM messages WHERE space_id = ? AND msg_id = ?", spaceId, msgId);
     response.status(200);
     return new JSONObject();
+  }
+
+  private final HttpClient httpClient = HttpClient.newHttpClient();
+  private final URI linkPreviewService = URI.create("http://natter-link-preview-service:4567");
+
+  private JSONObject fetchLinkPreview(String link) {
+    var url = linkPreviewService.resolve("/preview?url=" + URLEncoder.encode(link, StandardCharsets.UTF_8));
+    var request = HttpRequest.newBuilder(url).GET().build();
+    try {
+      var response = httpClient.send(request, BodyHandlers.ofString());
+      if (response.statusCode() == 200) {
+        return new JSONObject(response.body());
+      }
+    } catch (Exception ignored) {
+    }
+    return null;
+  }
+
+  public static class Message {
+    private final long spaceId;
+    private final long msgId;
+    private final String author;
+    private final Instant time;
+    private final String message;
+    private final List<JSONObject> links = new ArrayList<>();
+
+    public Message(long spaceId, long msgId, String author,
+        Instant time, String message) {
+      this.spaceId = spaceId;
+      this.msgId = msgId;
+      this.author = author;
+      this.time = time;
+      this.message = message;
+    }
+
+    @Override
+    public String toString() {
+      JSONObject msg = new JSONObject();
+      msg.put("uri",
+          "/spaces/" + spaceId + "/messages/" + msgId);
+      msg.put("author", author);
+      msg.put("time", time.toString());
+      msg.put("message", message);
+      msg.put("links", links);
+      return msg.toString();
+    }
+  }
+
+  public Message readMessage(Request request, Response response) {
+    var spaceId = Long.parseLong(request.params(":spaceId"));
+    var msgId = Long.parseLong(request.params(":msgId"));
+
+    var message = database.findUnique(Message.class,
+        "SELECT space_id, msg_id, author, msg_time, msg_text " +
+            "FROM messages WHERE msg_id = ? AND space_id = ?",
+        msgId, spaceId);
+
+    var linkPattern = Pattern.compile("https?://\\S+");
+    var matcher = linkPattern.matcher(message.message);
+    int start = 0;
+    while (matcher.find(start)) {
+      var url = matcher.group();
+      System.out.println(url);
+      var preview = fetchLinkPreview(url);
+      if (preview != null) {
+        message.links.add(preview);
+      }
+      start = matcher.end();
+    }
+
+    response.status(200);
+    return message;
   }
 }

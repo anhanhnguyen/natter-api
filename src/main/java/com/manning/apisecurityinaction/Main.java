@@ -135,6 +135,7 @@ public class Main {
 
     before("/spaces/*/messages/*", tokenController.requireScope("GET", "read_message"));
     before("/spaces/:spaceId/messages/*", userController.requirePermission("GET", "r"));
+    get("/spaces/:spaceId/messages/:msgId", spaceController::readMessage);
 
     before("/spaces/*/messages", tokenController.requireScope("GET", "list_messages"));
     before("/spaces/:spaceId/messages", userController.requirePermission("GET", "r"));
