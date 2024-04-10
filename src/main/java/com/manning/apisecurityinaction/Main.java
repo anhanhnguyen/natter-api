@@ -43,16 +43,14 @@ public class Main {
 
   public static void main(String... args) throws Exception {
     Spark.staticFiles.location("/public");
-    secure("localhost.p12", "changeit", null, null);
+    // secure("localhost.p12", "changeit", null, null);
     port(args.length > 0 ? Integer.parseInt(args[0]) : spark.Service.SPARK_DEFAULT_PORT);
 
-    var datasource = JdbcConnectionPool.create(
-        "jdbc:h2:mem:natter", "natter", "password");
+    var jdbcUrl = "jdbc:h2:tcp://natter-database-service:9092/mem:natter";
+    var datasource = JdbcConnectionPool.create(jdbcUrl, "natter", "password");
+    createTables(Database.forDataSource(datasource));
+    datasource = JdbcConnectionPool.create(jdbcUrl, "natter_api_user", "password");
     var database = Database.forDataSource(datasource);
-    createTables(database);
-    datasource = JdbcConnectionPool.create(
-        "jdbc:h2:mem:natter", "natter_api_user", "password");
-    database = Database.forDataSource(datasource);
 
     var keyPassword = System.getProperty("keystore.password", "changeit").toCharArray();
     var keyStore = KeyStore.getInstance("PKCS12");
