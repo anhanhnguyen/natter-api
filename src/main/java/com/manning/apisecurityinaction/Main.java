@@ -60,7 +60,7 @@ public class Main {
     var keyStore = KeyStore.getInstance("PKCS12");
     keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
     var macKey = keyStore.getKey("hmac-key", keyPassword);
-    var encKey = keyStore.getKey("aes-key", keyPassword);
+    var encKey = HKDF.expand(macKey, "token-encryption-key", 32, "AES");
 
     var capController = new CapabilityController(MacaroonTokenStore.wrap(new DatabaseTokenStore(database), macKey));
     var spaceController = new SpaceController(database, capController);
