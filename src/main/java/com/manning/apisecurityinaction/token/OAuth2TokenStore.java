@@ -1,6 +1,9 @@
 package com.manning.apisecurityinaction.token;
 
 import org.json.JSONObject;
+
+import com.manning.apisecurityinaction.controller.UserController;
+
 import spark.Request;
 
 import java.io.FileInputStream;
@@ -11,6 +14,8 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -101,7 +106,7 @@ public class OAuth2TokenStore implements SecureTokenStore {
                 var json = new JSONObject(httpResponse.body());
 
                 if (json.getBoolean("active")) {
-                    return processResponse(json);
+                    return processResponse(json, request);
                 }
             }
         } catch (IOException e) {
@@ -119,16 +124,44 @@ public class OAuth2TokenStore implements SecureTokenStore {
         throw new UnsupportedOperationException();
     }
 
-    private Optional<Token> processResponse(JSONObject response) {
+    private Optional<Token> processResponse(JSONObject response, Request originalRequest) {
         var expiry = Instant.ofEpochSecond(response.getLong("exp"));
         var subject = response.getString("sub");
 
-        var token = new Token(expiry, subject);
+        var confirmationKey = response.optJSONObject("cnf");
+        if (confirmationKey != null) {
+            for (var method : confirmationKey.keySet()) {
+                if (!"x5t#S256".equals(method)) {
+                    throw new RuntimeException("Unknown confirmation method: " + method);
+                }
+                if (!"SUCCESS".equals(
+                        originalRequest.headers("ssl-client-verify"))) {
+                    return Optional.empty();
+                }
+                var expectedHash = Base64url.decode(
+                        confirmationKey.getString(method));
+                var cert = UserController.decodeCert(originalRequest.headers("ssl-client-cert"));
+                var certHash = thumbprint(cert);
+                if (!MessageDigest.isEqual(expectedHash, certHash)) {
+                    return Optional.empty();
+                }
+            }
+        }
 
+        var token = new Token(expiry, subject);
         token.attributes.put("scope", response.getString("scope"));
         token.attributes.put("client_id",
                 response.optString("client_id"));
 
         return Optional.of(token);
+    }
+
+    private byte[] thumbprint(X509Certificate certificate) {
+        try {
+            var sha256 = MessageDigest.getInstance("SHA-256");
+            return sha256.digest(certificate.getEncoded());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
