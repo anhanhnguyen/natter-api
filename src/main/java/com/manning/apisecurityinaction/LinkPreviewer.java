@@ -15,6 +15,20 @@ public class LinkPreviewer {
         afterAfter((request, response) -> {
             response.type("application/json; charset=utf-8");
         });
+
+        var expectedHostNames = Set.of(
+                "localhost:30567",
+                "api.natter.com",
+                "api.natter.com:30567",
+                "natter-link-preview-service:4567",
+                "natter-link-preview-service.natter-api:4567",
+                "natter-link-preview-service.natter-api.svc.cluster.local:4567");
+        before((request, response) -> {
+            if (!expectedHostNames.contains(request.host())) {
+                halt(400);
+            }
+        });
+
         get("/preview", (request, response) -> {
             var url = request.queryParams("url");
             if (isBlockedAddress(url)) {
