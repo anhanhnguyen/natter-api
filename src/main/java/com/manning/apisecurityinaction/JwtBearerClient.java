@@ -2,6 +2,7 @@ package com.manning.apisecurityinaction;
 
 import java.io.FileInputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.*;
 import java.security.KeyStore;
 import java.security.interfaces.ECPrivateKey;
@@ -15,6 +16,8 @@ import com.nimbusds.jwt.*;
 import static java.time.Instant.now;
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static spark.Spark.*;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class JwtBearerClient {
     public static void main(String... args) throws Exception {
@@ -30,5 +33,35 @@ public class JwtBearerClient {
             response.type("application/jwk-set+json");
             return jwkSet.toString();
         });
+
+        var clientId = "test";
+        var as = "http://as.example.com:8080/oauth2/access_token";
+        var header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+                .keyID("es256-key")
+                .build();
+        var claims = new JWTClaimsSet.Builder()
+                .subject(clientId)
+                .issuer(clientId)
+                .expirationTime(Date.from(now().plus(30, SECONDS)))
+                .audience(as)
+                .jwtID(UUID.randomUUID().toString())
+                .build();
+        var jwt = new SignedJWT(header, claims);
+        jwt.sign(new ECDSASigner(privateKey));
+        var assertion = jwt.serialize();
+
+        var form = "grant_type=client_credentials&scope=create_space" +
+                "&client_assertion_type=" +
+                "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" +
+                "&client_assertion=" + assertion;
+        var httpClient = HttpClient.newHttpClient();
+        var request = HttpRequest.newBuilder()
+                .uri(URI.create(as))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .build();
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println(response.statusCode());
+        System.out.println(response.body());
     }
 }
