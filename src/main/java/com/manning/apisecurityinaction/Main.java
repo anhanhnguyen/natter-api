@@ -46,8 +46,12 @@ public class Main {
     // secure("localhost.p12", "changeit", null, null);
     port(args.length > 0 ? Integer.parseInt(args[0]) : spark.Service.SPARK_DEFAULT_PORT);
 
+    var secretsPath = Paths.get("/etc/secrets/database");
+    var dbUsername = Files.readString(secretsPath.resolve("username"));
+    var dbPassword = Files.readString(secretsPath.resolve("password"));
+
     var jdbcUrl = "jdbc:h2:tcp://natter-database-service:9092/mem:natter";
-    var datasource = JdbcConnectionPool.create(jdbcUrl, "natter", "password");
+    var datasource = JdbcConnectionPool.create(jdbcUrl, dbUsername, dbPassword);
     createTables(Database.forDataSource(datasource));
     datasource = JdbcConnectionPool.create(jdbcUrl, "natter_api_user", "password");
     var database = Database.forDataSource(datasource);
