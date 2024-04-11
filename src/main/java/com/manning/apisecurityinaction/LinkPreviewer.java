@@ -1,13 +1,17 @@
 package com.manning.apisecurityinaction;
 
+import java.io.IOException;
 import java.net.*;
+import java.util.Set;
 
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.slf4j.*;
 import spark.ExceptionHandler;
 import static spark.Spark.*;
 
+import static org.jsoup.Connection.Method.GET;
 public class LinkPreviewer {
     private static final Logger logger = LoggerFactory.getLogger(LinkPreviewer.class);
 
@@ -97,8 +101,7 @@ public class LinkPreviewer {
                 throw new IllegalArgumentException(
                         "URL refers to local/private address");
             }
-            var res = Jsoup.connect(url).followRedirects(false)
-                    .timeout(3000).method(GET).execute();
+            var res = Jsoup.connect(url).followRedirects(false).timeout(3000).method(GET).execute();
             if (res.statusCode() / 100 == 3) {
                 url = res.header("Location");
             } else {
