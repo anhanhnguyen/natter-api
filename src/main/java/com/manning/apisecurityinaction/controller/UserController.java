@@ -9,7 +9,12 @@ import java.nio.charset.*;
 import java.util.*;
 import java.util.Base64;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static spark.Spark.*;
+
+import java.io.ByteArrayInputStream;
+import java.net.URLDecoder;
+import java.security.cert.*;
 
 public class UserController {
   private static final String USERNAME_PATTERN = "[a-zA-Z][a-zA-Z0-9]{1,29}";
@@ -46,26 +51,16 @@ public class UserController {
   }
 
   public void authenticate(Request request, Response response) {
-    var authHeader = request.headers("Authorization");
-    if (authHeader == null || !authHeader.startsWith("Basic ")) {
+    if ("SUCCESS".equals(request.headers("ssl-client-verify"))) {
+      processClientCertificateAuth(request);
       return;
     }
+    var credentials = getCredentials(request);
+    if (credentials == null)
+      return;
 
-    var offset = "Basic ".length();
-    var credentials = new String(Base64.getDecoder().decode(
-        authHeader.substring(offset)), StandardCharsets.UTF_8);
-
-    var components = credentials.split(":", 2);
-    if (components.length != 2) {
-      throw new IllegalArgumentException("invalid auth header");
-    }
-
-    var username = components[0];
-    var password = components[1];
-
-    if (!username.matches(USERNAME_PATTERN)) {
-      throw new IllegalArgumentException("invalid username");
-    }
+    var username = credentials[0];
+    var password = credentials[1];
 
     var hash = database.findOptional(String.class,
         "SELECT pw_hash FROM users WHERE user_id = ?", username);
@@ -79,6 +74,29 @@ public class UserController {
           username);
       request.attribute("groups", groups);
     }
+  }
+
+  String[] getCredentials(Request request) {
+    var authHeader = request.headers("Authorization");
+    if (authHeader == null || !authHeader.startsWith("Basic ")) {
+      return null;
+    }
+
+    var offset = "Basic ".length();
+    var credentials = new String(Base64.getDecoder().decode(
+        authHeader.substring(offset)), UTF_8);
+
+    var components = credentials.split(":", 2);
+    if (components.length != 2) {
+      throw new IllegalArgumentException("invalid auth header");
+    }
+
+    var username = components[0];
+    if (!username.matches(USERNAME_PATTERN)) {
+      throw new IllegalArgumentException("invalid username");
+    }
+
+    return components;
   }
 
   public void requireAuthentication(Request request, Response response) {
@@ -113,5 +131,36 @@ public class UserController {
         halt(403);
       }
     };
+  }
+
+  public static X509Certificate decodeCert(String encodedCert) {
+    var pem = URLDecoder.decode(encodedCert, UTF_8);
+    try (var in = new ByteArrayInputStream(pem.getBytes(UTF_8))) {
+      var certFactory = CertificateFactory.getInstance("X.509");
+      return (X509Certificate) certFactory.generateCertificate(in);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static final int DNS_TYPE = 2;
+
+  void processClientCertificateAuth(Request request) {
+    var pem = request.headers("ssl-client-cert");
+    var cert = decodeCert(pem);
+    try {
+      if (cert.getSubjectAlternativeNames() == null) {
+        return;
+      }
+      for (var san : cert.getSubjectAlternativeNames()) {
+        if ((Integer) san.get(0) == DNS_TYPE) {
+          var subject = (String) san.get(1);
+          request.attribute("subject", subject);
+          return;
+        }
+      }
+    } catch (CertificateParsingException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
