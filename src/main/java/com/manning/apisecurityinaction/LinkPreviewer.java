@@ -17,8 +17,11 @@ public class LinkPreviewer {
         });
         get("/preview", (request, response) -> {
             var url = request.queryParams("url");
-            var doc = Jsoup.connect(url).timeout(3000).get();
-            System.out.println(doc);
+            if (isBlockedAddress(url)) {
+                throw new IllegalArgumentException(
+                        "URL refers to local/private address");
+            }
+            var doc = fetch(url);
             var title = doc.title();
             var desc = doc.head()
                     .selectFirst("meta[property='og:description']");
@@ -48,5 +51,48 @@ public class LinkPreviewer {
             response.body(new JSONObject()
                     .put("status", status).toString());
         };
+    }
+
+    private static boolean isBlockedAddress(String uri)
+            throws UnknownHostException {
+        var host = URI.create(uri).getHost();
+        for (var ipAddr : InetAddress.getAllByName(host)) {
+            if (ipAddr.isLoopbackAddress() ||
+                    ipAddr.isLinkLocalAddress() ||
+                    ipAddr.isSiteLocalAddress() ||
+                    ipAddr.isMulticastAddress() ||
+                    ipAddr.isAnyLocalAddress() ||
+                    isUniqueLocalAddress(ipAddr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isUniqueLocalAddress(InetAddress ipAddr) {
+        return ipAddr instanceof Inet6Address &&
+                (ipAddr.getAddress()[0] & 0xFF) == 0xFD &&
+                (ipAddr.getAddress()[1] & 0xFF) == 0X00;
+    }
+
+    private static Document fetch(String url) throws IOException {
+        Document doc = null;
+        int retries = 0;
+        while (doc == null && retries++ < 10) {
+            if (isBlockedAddress(url)) {
+                throw new IllegalArgumentException(
+                        "URL refers to local/private address");
+            }
+            var res = Jsoup.connect(url).followRedirects(false)
+                    .timeout(3000).method(GET).execute();
+            if (res.statusCode() / 100 == 3) {
+                url = res.header("Location");
+            } else {
+                doc = res.parse();
+            }
+        }
+        if (doc == null)
+            throw new IOException("too many redirects");
+        return doc;
     }
 }
